@@ -1,0 +1,7 @@
+{
+  "name": "XAUUSD SMC AI Analyst Pro",
+  "description": "Professional AI trading analysis system for XAUUSD using Smart Money Concepts (SMC), deep structural analysis, and multi-timeframe liquidity logic.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

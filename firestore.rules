@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: trades
+    // Document ID: {tradeId}
+    // Fields:
+    //   - timestamp: timestamp (required) - Time of analysis
+    //   - images: map (required) - Base64 images for D1, H1, M15, M5
+    //   - analysis: map (required) - SMC analysis results
+    //   - outcome: string (required, enum: WIN, LOSS, PENDING, MISSED) - Trade outcome
+    //   - userId: string (required) - Owner of the trade
+    //   - userFeedback: string (optional) - User feedback
+    //   - accuracyScore: number (optional) - AI accuracy score
+    //   - lastUpdated: timestamp (optional) - Last update time
+    //
+    // Collection: stats
+    // Document ID: global
+    // Fields:
+    //   - totalTrades: integer
+    //   - winRate: number
+    //   - avgRR: number
+    //   - lastUpdated: timestamp
+    //
+    // Collection: refinements
+    // Document ID: {refinementId}
+    // Fields:
+    //   - timestamp: timestamp (required)
+    //   - weaknesses: list (required)
+    //   - refinements: list (required)
+    //   - adaptiveChallenges: list (required)
+    //   - analysisSummary: string (required)
+    //   - version: integer (required)
+    //   - userId: string (required)
+    //
+    // Collection: learning_sessions
+    // Document ID: {sessionId}
+    // Fields:
+    //   - timestamp: timestamp (required)
+    //   - losingTradesCount: integer (required)
+    //   - analysis: string (required)
+    //   - refinementId: string (required)
+    //   - userId: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          ((request.auth.token.email == "mastr4197@gmail.com" || 
+            request.auth.token.email == "zorozdk7@gmail.com" || 
+            request.auth.token.email == "drisslwali700@gmail.com") && 
+           request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidTrade(data) {
+      return data.timestamp is timestamp &&
+             data.images is map &&
+             data.analysis is map &&
+             data.outcome in ['WIN', 'LOSS', 'PENDING', 'MISSED', 'AVOIDED'] &&
+             (data.userId is string || !('userId' in data)) &&
+             (!('userFeedback' in data) || (data.userFeedback is string && data.userFeedback.size() < 1000)) &&
+             (!('accuracyScore' in data) || (data.accuracyScore is number && data.accuracyScore >= 0 && data.accuracyScore <= 100)) &&
+             (!('isSimulated' in data) || data.isSimulated is bool) &&
+             (!('lastUpdated' in data) || data.lastUpdated is timestamp);
+    }
+
+    function isValidStats(data) {
+      return data.totalTrades is int &&
+             data.winRate is number &&
+             data.avgRR is number &&
+             (!('evolutionLevel' in data) || (data.evolutionLevel is int)) &&
+             data.lastUpdated is timestamp;
+    }
+
+    function isValidRefinement(data) {
+      return data.timestamp is timestamp &&
+             data.weaknesses is list &&
+             data.refinements is list &&
+             data.adaptiveChallenges is list &&
+             data.analysisSummary is string &&
+             data.version is int &&
+             data.userId is string &&
+             (!('performanceMetrics' in data) || (
+               data.performanceMetrics is map &&
+               data.performanceMetrics.winRateAtCreation is number &&
+               data.performanceMetrics.totalTradesAtCreation is int
+             ));
+    }
+
+    function isValidLearningSession(data) {
+      return data.timestamp is timestamp &&
+             data.losingTradesCount is int &&
+             data.analysis is string &&
+             data.refinementId is string &&
+             data.userId is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /trades/{tradeId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+                      isValidTrade(request.resource.data) && 
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && 
+                      isValidTrade(request.resource.data) && 
+                      (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /refinements/{refinementId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+                      isValidRefinement(request.resource.data) && 
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+    }
+
+    match /learning_sessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+                      isValidLearningSession(request.resource.data) && 
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+    }
+
+    match /stats/global {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

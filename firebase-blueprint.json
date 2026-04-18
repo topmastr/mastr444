@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "Trade": {
+      "title": "Trade Analysis",
+      "description": "A single XAUUSD SMC analysis result with screenshots and outcome.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "images": { 
+          "type": "object",
+          "properties": {
+            "d1": { "type": "string" },
+            "h1": { "type": "string" },
+            "m15": { "type": "string" },
+            "m5": { "type": "string" }
+          }
+        },
+        "analysis": {
+          "type": "object",
+          "properties": {
+            "d1Liquidity": { "type": "string" },
+            "h1Bias": { "type": "string" },
+            "m15Confirmation": { "type": "string" },
+            "m5EntryLogic": { "type": "string" },
+            "tradeSetup": {
+              "type": "object",
+              "properties": {
+                "direction": { "type": "string", "enum": ["BUY", "SELL"] },
+                "entry": { "type": "number" },
+                "stopLoss": { "type": "number" },
+                "takeProfit": { "type": "number" },
+                "riskReward": { "type": "string" },
+                "reasoning": { "type": "string" }
+              }
+            },
+            "riskManagement": { "type": "string" },
+            "confidenceScore": { "type": "number" },
+            "tradeQuality": { "type": "string", "enum": ["A+", "A", "B", "C"] },
+            "explanation": { "type": "string" }
+          }
+        },
+        "outcome": { "type": "string", "enum": ["WIN", "LOSS", "PENDING", "MISSED", "AVOIDED"], "default": "PENDING" },
+        "userFeedback": { "type": "string" },
+        "accuracyScore": { "type": "number", "minimum": 0, "maximum": 100 },
+        "userId": { "type": "string" }
+      },
+      "required": ["timestamp", "images", "analysis", "outcome", "userId"]
+    },
+    "Stats": {
+      "title": "Training Stats",
+      "description": "Aggregated accuracy and performance metrics for the AI model.",
+      "type": "object",
+      "properties": {
+        "totalTrades": { "type": "integer" },
+        "winRate": { "type": "number" },
+        "avgRR": { "type": "number" },
+        "evolutionLevel": { "type": "integer" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      }
+    },
+    "StrategyRefinement": {
+      "title": "Strategy Refinement",
+      "description": "Updated trading rules and identified weaknesses from self-learning.",
+      "type": "object",
+      "properties": {
+        "weaknesses": { "type": "array", "items": { "type": "string" } },
+        "refinements": { "type": "array", "items": { "type": "string" } },
+        "adaptiveChallenges": { "type": "array", "items": { "type": "string" } },
+        "analysisSummary": { "type": "string" },
+        "version": { "type": "integer" },
+        "performanceMetrics": {
+          "type": "object",
+          "properties": {
+            "winRateAtCreation": { "type": "number" },
+            "totalTradesAtCreation": { "type": "integer" }
+          }
+        },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "LearningSession": {
+      "title": "Learning Session",
+      "description": "Log of a self-learning session triggered by the user.",
+      "type": "object",
+      "properties": {
+        "losingTradesCount": { "type": "integer" },
+        "analysis": { "type": "string" },
+        "refinementId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/trades/{tradeId}": {
+      "schema": "Trade",
+      "description": "Historical trade analyses for model refinement."
+    },
+    "/refinements/{refinementId}": {
+      "schema": "StrategyRefinement",
+      "description": "Historical strategy refinements."
+    },
+    "/learning_sessions/{sessionId}": {
+      "schema": "LearningSession",
+      "description": "Logs of AI learning sessions."
+    },
+    "/stats/global": {
+      "schema": "Stats",
+      "description": "Global performance metrics."
+    }
+  }
+}
